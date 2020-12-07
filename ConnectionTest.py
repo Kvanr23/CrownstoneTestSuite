@@ -213,7 +213,6 @@ class DevKit(Thread):
 		ADDR_TYPE_RANDOM is required to be able to connect to a Crownstone.
 		"""
 		self.p = Peripheral()
-		print(self.address)
 		strace_connect(self.address, ADDR_TYPE_RANDOM, 0)(self.p.connect)
 		status = self.p.status()
 		if status['state'] == 'conn':
