@@ -185,7 +185,7 @@ class DevKit(Thread):
 			if str(service.uuid).startswith('24f10000'):
 				chars = service.getCharacteristics()
 				for char in chars:
-					if str(char.uuid).startswith('24f1000c'): # control characteristic
+					if str(char.uuid).startswith('24f1000c'):  # control characteristic
 						return char.getHandle()
 
 	def connect_DK(self):
@@ -195,6 +195,7 @@ class DevKit(Thread):
 		ADDR_TYPE_RANDOM is required to be able to connect to a Crownstone.
 		'''
 		self.p = Peripheral()
+		print(self.address)
 		strace_connect(self.address, ADDR_TYPE_RANDOM, 0)(self.p.connect)
 		status = self.p.status()
 		if status['state'] == 'conn':
@@ -265,7 +266,7 @@ class DevKit(Thread):
 				self.sequential += 1
 				if self.sequential > self.highest_sequential:
 					self.highest_sequential = self.sequential
-				print("Failed connection! Attempt:", attempt, "Stacktrace:", exception, flush=True)
+				print("Failed connection! Attempt:", attempt, "Error:", exception, flush=True)
 
 		# Done, so finish up the progressbar to 100%
 		progressBar(attempts, attempts, prefix='Progress:', suffix='Complete', length=50)
@@ -282,7 +283,8 @@ class DevKit(Thread):
 		'''
 		# Print the address of the (first) found dev kit.
 		print("Address:", self.scan_devices(), flush=True)
-		global exit_flag
+		global exit_flag, address
+		self.address = address
 
 		# Create a logger Thread.
 		self.loggerThread = DebugLogger('DevKit-Logger', 2)
@@ -293,7 +295,7 @@ class DevKit(Thread):
 
 		# Start the test
 		# Parameter attemps: The amount of tests that will be done.
-		self.redundancy_test(attempts=5)
+		self.redundancy_test(attempts=100)
 
 		# When done, print that we are done.
 		print("Done, saving...")
@@ -308,8 +310,8 @@ class DevKit(Thread):
 
 # If this file is used as main file instead of imported, run it.
 if __name__ == '__main__':
-	try:
+	# try:
 		dk_test = DevKit()
-		dk_test.run()
-	except Exception as e:
-		print("Something failed!", e.with_traceback())
+		dk_test.start()
+	# except Exception as e:
+	# 	print("Something failed!", e)
