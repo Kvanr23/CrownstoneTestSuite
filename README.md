@@ -13,7 +13,7 @@ The test is runnable in a terminal or shell. May require `sudo` rights.
 ### Install bluepy!
 In order to work, you need to install bluepy by IanHarvey:
 
-####[Bluepy installation](https://www.github.com/IanHarvey/bluepy#installation)
+#### [Bluepy installation](https://www.github.com/IanHarvey/bluepy#installation)
 
 ---
 
