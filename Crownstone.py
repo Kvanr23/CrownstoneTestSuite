@@ -10,9 +10,10 @@ except ImportError:
 import time
 from Utils.PrintColors import *
 
-attempts = 20
+attempts = 100
 scantime = 10
 failures = 0
+fails = []
 address = ''
 
 # red('Red')
@@ -61,6 +62,8 @@ def scanCrownstones():
 						)
 					except bluepy.btle.BTLEDisconnectError as err:
 						red(err)
+						failures += 1
+						fails.append((attempt, bluepy.btle.BTLEDisconnectError))
 				except CrownstoneBleException as err:
 					if err.type == BleError.SETUP_FAILED:
 						print(
@@ -68,7 +71,6 @@ def scanCrownstones():
 							colored(', checking in 2 seconds if the crownstone is in normal mode.', 'green'),
 							colored('(We need to give the crownstone a little more time)', 'cyan')
 						)
-						time.sleep(2)
 						blue("Normal mode now:", ble.isCrownstoneInNormalMode(address))
 
 			if not device['setupMode']:
@@ -98,6 +100,8 @@ def scanCrownstones():
 						# We need to restart the crownstone!
 						input('Please restart the crownstone! Press enter when done!')
 						ble.control.commandFactoryReset()
+						failures += 1
+						fails.append((attempt, BleError.CAN_NOT_FIND_SERVICE))
 				blue('Reset done')
 				time.sleep(3)
 				# yellow('Disconnecting from crwn')
@@ -113,3 +117,7 @@ def scanCrownstones():
 scanCrownstones()
 if failures == 0:
 	green("No problems with scanning!")
+red("Amount of failed tries:", failures)
+print('These are the following error codes:')
+for attempt, error in fails:
+	print(attempt, error)
