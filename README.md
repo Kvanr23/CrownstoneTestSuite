@@ -1,6 +1,24 @@
 # CrownstoneTestSuite
 Testsuite for Crownstones
 
+Contains the following:
+
+- <u>Connection test</u>
+  
+    This can be used to check the connection between your pc and a Crownstone devkit (nrf52 devkit).
+    
+    Can be used in combination with `btmon` and `strace`, read below.
+
+- <u>Crownstone test</u>
+  
+    This is for testing the setup and factory reset function over BLE.
+
+- <u>Switching test</u>
+
+    This script will connect to the dev kit and use the UART debug line to check if the BLE packets arrive.
+    
+    It also nicely prints information out in different colors based on the type of info.
+
 ---
 
 ## NOTE:
