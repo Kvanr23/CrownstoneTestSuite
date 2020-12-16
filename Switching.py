@@ -6,6 +6,7 @@ from crownstone_core.Exceptions import CrownstoneBleException
 
 from UART import DebugLogger
 from Utils.PrintColors import *
+from bluepy.btle import *
 
 attempts = 10
 address = ''
@@ -27,8 +28,12 @@ ble.setSettings(
 
 def switch():
 	global switchstate
-	ble.control.setSwitchState(switchstate)
-	switchstate = not switchstate
+	try:
+		ble.control.setSwitchState(switchstate)
+		switchstate = not switchstate
+		return 0
+	except BTLEDisconnectError as err:
+		return 1
 
 
 def checkSetup():
@@ -61,11 +66,22 @@ def checkSetup():
 
 
 def disconnect():
-	ble.disconnect()
+	try:
+		ble.disconnect()
+		return 0
+	except Exception as err:
+		red(err)
+		return 1
 
 
 def connect():
-	ble.connect(address)
+	try:
+		ble.connect(address)
+		return 0
+	except BTLEDisconnectError as err:
+		# red(err)
+		# white('Connecting failed')
+		return 1
 
 
 def scan():
@@ -116,7 +132,8 @@ if __name__ == '__main__':
 
 	# Connect to device
 	blue('Start connecting')
-	connect()
+	while connect() == 1:
+		time.sleep(0.1)
 	time.sleep(1)
 	if logger.ble_event.endswith('BLE_GAP_EVT_CONNECTED'):
 		print('Crownstone BLE event: ', end='')
