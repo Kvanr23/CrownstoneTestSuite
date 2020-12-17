@@ -1,5 +1,7 @@
 from threading import Thread
 import serial
+from time import time
+from datetime import datetime
 
 
 class DebugLogger(Thread):
@@ -16,7 +18,7 @@ class DebugLogger(Thread):
 		self.threadName = threadName
 		self.threadId = threadId
 		self.serial_is_open = False
-		self.debug, self.file = None, None
+		self.debug, self.file, self.ble_event = None, None, None
 		try:
 			self.open_debug('/dev/ttyACM0')  # Change this according to your device.
 			self.serial_is_open = True
@@ -58,6 +60,11 @@ class DebugLogger(Thread):
 			self.parse_line(line)
 		return line
 
+	def get_event(self):
+		evt = self.ble_event
+		self.ble_event = ''
+		return evt
+
 	def reopen_file(self):
 		"""
 		Reopens file for appending a new line.
@@ -77,7 +84,8 @@ class DebugLogger(Thread):
 		self.reopen_file()
 		if not line:
 			line = self.get_line() + '\r\n'
-		self.file.write(line + '\r\n')
+		t = round(time() - self.starttime, 4)
+		self.file.write('[' + str(t) + ']' + line + '\r\n')
 		self.close_file()
 
 	def run(self):
@@ -87,6 +95,8 @@ class DebugLogger(Thread):
 		"""
 		self.exit_flag = False
 		self.file = open(self.file_name, 'w')
+		self.starttime = time()
+		self.write_line_to_file(str(datetime.now()))
 		while not self.exit_flag:
 			if self.serial_is_open:
 				self.write_line_to_file()

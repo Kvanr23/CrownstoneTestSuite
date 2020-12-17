@@ -8,11 +8,12 @@ from UART import DebugLogger
 from Utils.PrintColors import *
 from bluepy.btle import *
 
-attempts = 10
+attempts = 1000
 address = ''
-failures = ''
+failures = 0
 devices = []
 switchstate = False
+starttime = time.time()
 
 ble = CrownstoneBle()
 ble.setSettings(
@@ -79,8 +80,7 @@ def connect():
 		ble.connect(address)
 		return 0
 	except BTLEDisconnectError as err:
-		# red(err)
-		# white('Connecting failed')
+		red('Connecting failed', err)
 		return 1
 
 
@@ -90,27 +90,67 @@ def scan():
 	devices = ble.getCrownstonesByScanning(2)
 	for device in devices:
 		if device['address'].startswith('ec:ac:'):
-		# if not device['setupMode']:
+			# if not device['setupMode']:
 			address = device['address']
 			green('Found dev kit!')
 			break
 
 
 def switch_test():
+	global logger
+
+	# Connect to device
+	blue('Start connecting')
+	while connect() == 1:
+		time.sleep(0.1)
+	time.sleep(1)
+	event = logger.get_event()
+	if 'BLE_GAP_EVT_CONNECTED' in event:
+		print('Crownstone BLE event: ', end='')
+		red(event)
+		green('->   We are connected!')
+		blue('Done connecting\n')
+
+	# Switch Crownstone
+	blue('Sending switch command')
 	switch()
 	time.sleep(1)
-	if logger.ble_event.endswith('BLE_GATTS_EVT_WRITE'):
+	event = logger.get_event()
+	if 'BLE_GATTS_EVT_WRITE' in event:
 		print('Crownstone BLE event: ', end='')
-		red(logger.ble_event)
+		red(event)
 		green('->   Switching is received!\n')
+
+	# Disconnect from device
+	blue('Start disconnecting')
+	disconnect()
+	time.sleep(1)
+
+	while not logger.ble_event.endswith('DISCONNECTED'):
+		time.sleep(0.1)
+
+	# Wait for disconnected acknowledgement.
+	event = logger.get_event()
+	if 'BLE_GAP_EVT_DISCONNECTED' in event:
+		print('Crownstone BLE event: ', end='')
+		red(event)
+		green('->   Disconnection successful')
+		blue('Done disconnecting\n')
+		yellow('Time: [', round(time.time() - starttime, 6), ']')
+		blue('===============================================================\n')
 
 	time.sleep(2)
 
 
 if __name__ == '__main__':
-	filename = 'UART_Switching.txt'
-	testnumber = 1
+	magenta('===============================================================')
+	yellow('Time: [', round(time.time() - starttime, 6), ']')
 
+	filename = 'UART_Switching.txt'
+	testnumber = 10
+
+
+	# Start UART connection.
 	green('Debugger started...')
 	logger = DebugLogger('Logger Thread', 1, filename)
 	logger.start()
@@ -118,6 +158,8 @@ if __name__ == '__main__':
 	green('Started scanning...')
 	# Scan for devices
 	scan()
+	if not address > '':
+		raise Exception('No address found!')
 
 	green('Scanning done.')
 	# Print address
@@ -130,47 +172,30 @@ if __name__ == '__main__':
 	magenta('===============================================================')
 	print('\n')
 
-	# Connect to device
-	blue('Start connecting')
-	while connect() == 1:
-		time.sleep(0.1)
-	time.sleep(1)
-	if logger.ble_event.endswith('BLE_GAP_EVT_CONNECTED'):
-		print('Crownstone BLE event: ', end='')
-		red(logger.ble_event)
-		blue('Done connecting\n')
-
 	cyan('Start switching')
 
-	for i in range(1, testnumber+1):
+	for i in range(1, testnumber + 1):
 		cyan('Switch nr. ', i)
-		switch_test()
+		try:
+			switch_test()
+		except:
+			err = sys.exc_info()[0]
+			if err == KeyboardInterrupt:
+				raise
+			if err == CrownstoneBleException:
+				# Connection failed most likely, try again:
+				i -= 1
+			else:
+				red('Error occurred:', err)
 
-	cyan('Done switching\n\n')
+			# We caught exception, add to failure count.
+			failures += 1
 
-	# Disconnect from device
-	blue('Start disconnecting')
-	disconnect()
-	time.sleep(1)
-	if logger.ble_event.endswith('BLE_GATTS_EVT_WRITE'):
-		print('Crownstone BLE event: ', end='')
-		red(logger.ble_event)
-		green('->   Disconnect command received!')
+	cyan('Done\n\n')
 
-	while not logger.ble_event.endswith('DISCONNECTED'):
-		time.sleep(0.1)
-		# Wait for disconnected acknowledgement.
-
-	# red(logger.ble_event)
-	if logger.ble_event.endswith('BLE_GAP_EVT_DISCONNECTED'):
-		print('Crownstone BLE event: ', end='')
-		red(logger.ble_event)
-		green('->   Disconnection successful')
-		blue('Done disconnecting\n')
 	logger.exit_flag = True
 	logger.join()
 
 	cyan('\n\nUART Debugging saved to:', filename)
-
 
 ble.shutDown()

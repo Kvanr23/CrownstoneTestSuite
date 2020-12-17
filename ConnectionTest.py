@@ -275,14 +275,20 @@ class DevKit(Thread):
 			try:
 				self.test_connection()
 				self.last_was_failure = False
-			except BTLEDisconnectError as exception:
-				failure = True
-				self.last_was_failure = True
-				self.failures += 1
-				self.sequential += 1
-				if self.sequential > self.highest_sequential:
-					self.highest_sequential = self.sequential
-				print("Failed connection! Attempt:", attempt, "Error:", exception, flush=True)
+			except:
+				err = sys.exc_info()[0]
+				if err == KeyboardInterrupt:
+					raise
+				if err == BTLEDisconnectError:
+					failure = True
+					self.last_was_failure = True
+					self.failures += 1
+					self.sequential += 1
+					if self.sequential > self.highest_sequential:
+						self.highest_sequential = self.sequential
+					print("Failed connection! Attempt:", attempt, "Error:", err, flush=True)
+				else:
+					print('Unknown error occurred:', err)
 
 		# Done, so finish up the progressbar to 100%
 		progressBar(attempts, attempts, prefix='Progress:', suffix='Complete', length=50) if debug else None
