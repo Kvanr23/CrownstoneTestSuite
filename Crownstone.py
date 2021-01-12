@@ -5,7 +5,8 @@ import bluepy
 try:
 	from termcolor import colored
 except ImportError:
-	print('Please install termcolor:\n\n\'pip install termcolor\'')
+	# print('Please install termcolor:\n\n\'pip install termcolor\'')
+	pass
 
 import time
 from Utils.PrintColors import *
@@ -67,9 +68,9 @@ def scanCrownstones():
 				except CrownstoneBleException as err:
 					if err.type == BleError.SETUP_FAILED:
 						print(
-							colored(err.type, 'red'),
-							colored(', checking in 2 seconds if the crownstone is in normal mode.', 'green'),
-							colored('(We need to give the crownstone a little more time)', 'cyan')
+							red(err.type),
+							green(', checking in 2 seconds if the crownstone is in normal mode.'),
+							cyan('(We need to give the crownstone a little more time)')
 						)
 						blue("Normal mode now:", ble.isCrownstoneInNormalMode(address))
 

@@ -9,19 +9,19 @@ from strace import strace_mask, strace_connect
 # Scanner can change it automatically.
 address = 'EC:AC:CA:42:36:EE'
 exit_flag = False
-debug: bool = False
+debug: bool = True
 uart = True
 debugFile = ''
 number = 10
 failure = None
 
 # Time to wait after disconnecting, which has to be finetuned and figured out perfectly.
-time_after_disconnect = 3
+time_after_disconnect = 5
 # For now, 3 seconds to wait after disconnecting.
 
 
 # Just a function to print a progressbar, for visual reference of the progress.
-def progressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
+def progressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', update=False):
 	"""
 	Call in a loop to create terminal progress bar
 	@params:
@@ -36,7 +36,11 @@ def progressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, 
 	percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
 	filledLength = int(length * iteration // total)
 	bar = fill * filledLength + '-' * (length - filledLength)
-	print(f'\r{prefix} |{bar}| {percent}% {suffix}', flush=True)
+
+	if not update:
+		print(f'\r{prefix} |{bar}| {percent}% {suffix}', flush=True)
+	else:
+		print(f'\r{prefix} |{bar}| {percent}% {suffix}', end='', flush=True)
 	# Print New Line on Complete
 	if iteration == total:
 		print()
@@ -85,7 +89,9 @@ class DebugLogger(Thread):
 		self.debug, self.file = None, None
 		try:
 			self.open_debug('/dev/ttyACM0')  # Change this according to your device.
+			# self.open_debug('/dev/ttyACM1')  # Change this according to your device.
 			self.serial_is_open = True
+			print('UART opened', flush=True)
 		except serial.serialutil.SerialException as err:
 			print("Could not open serial port:", err)
 			self.serial_is_open = False
@@ -199,11 +205,11 @@ class DevKit(Thread):
 		"""
 		services = self.p.getServices()
 		for service in services:
-			# print(service.uuid)
-			if str(service.uuid).startswith('24f10000'):
+			if str(service.uuid).startswith('24f0'):
 				chars = service.getCharacteristics()
 				for char in chars:
-					if str(char.uuid).startswith('24f1000c'):  # control characteristic
+					# if str(char.uuid).startswith('24f0000c'):  # control characteristic
+					if '000c' in str(char.uuid):
 						return char.getHandle()
 
 	def connect_DK(self):
@@ -215,7 +221,7 @@ class DevKit(Thread):
 		self.p = Peripheral()
 		strace_connect(self.address, ADDR_TYPE_RANDOM, 0)(self.p.connect)
 		status = self.p.status()
-		if status['state'] == 'conn':
+		if status['state'][0] == 'conn':
 			# Connection is live
 			return 'CONNECTED'
 
@@ -266,9 +272,10 @@ class DevKit(Thread):
 		global failure
 		self.start_time = time.time()
 		self.prevtime = self.start_time
+		update = not debug
 
 		for attempt in range(0, attempts):
-			progressBar(attempt, attempts, prefix='Progress:', suffix='Complete', length=50) if debug else None
+			progressBar(attempt, attempts, prefix='Progress:', suffix='Complete', length=50, update=update)
 
 			if not self.last_was_failure:
 				self.sequential = 0
@@ -286,12 +293,13 @@ class DevKit(Thread):
 					self.sequential += 1
 					if self.sequential > self.highest_sequential:
 						self.highest_sequential = self.sequential
-					print("Failed connection! Attempt:", attempt, "Error:", err, flush=True)
+					print("\nFailed connection! Attempt:", attempt, "Error:", err, flush=True)
 				else:
 					print('Unknown error occurred:', err)
+					raise err
 
 		# Done, so finish up the progressbar to 100%
-		progressBar(attempts, attempts, prefix='Progress:', suffix='Complete', length=50) if debug else None
+		progressBar(attempts, attempts, prefix='Progress:', suffix='Complete', length=50)
 
 		# Print out stats
 		percentage = self.failures / attempts * 100
@@ -365,7 +373,7 @@ def parseArgs():
 	if args.number:
 		number = int(args.number)
 	else:
-		number = 100
+		number = 1000
 
 	if args.no_uart:
 		uart = False

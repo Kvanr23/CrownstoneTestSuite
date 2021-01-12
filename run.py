@@ -11,7 +11,7 @@ name = ''
 
 def test(name: str, strace: bool):
 	global flag
-	cmd = 'python3 ConnectionTest.py -n 1 -o %s_UART.txt' % name
+	cmd = 'python3 ConnectAndCommand.py -n 1 -o %s_UART.txt' % name
 	strace_cmd = 'strace -o %s_strace.txt ' % name + cmd
 	proc = subprocess.Popen(strace_cmd, shell=True) if strace else subprocess.Popen(cmd, shell=True)
 	pid, sts = os.waitpid(proc.pid, 0)

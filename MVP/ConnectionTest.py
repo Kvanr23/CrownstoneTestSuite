@@ -9,7 +9,7 @@ try:
 except btle.BTLEDisconnectError as err:
 	print(err)
 	exit()
-tests = 10000
+tests = 1000
 error_counter = 0
 
 for i in range(tests):
@@ -17,8 +17,11 @@ for i in range(tests):
 		print(i/tests*100, "%")
 	try:
 		peripheral.connect(addr=bt_address, addrType=btle.ADDR_TYPE_RANDOM, iface=0)
+		if peripheral.status()['state'] == 'disc':
+			print('Not connected')
 		sleep(timeout)
 		peripheral.disconnect()
+		sleep(timeout)
 	except btle.BTLEDisconnectError as err:
 		error_counter += 1
 		# print('A connection failed!')
