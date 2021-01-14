@@ -1,5 +1,6 @@
 from threading import Thread
 import serial
+import subprocess as sp
 from time import time
 from datetime import datetime
 
@@ -19,8 +20,12 @@ class DebugLogger(Thread):
 		self.threadId = threadId
 		self.serial_is_open = False
 		self.debug, self.file, self.ble_event = None, None, None
+
+		# Find ttyACM path: (Try with the first one)
+		path = sp.getoutput('ls /dev/ttyACM*')
+
 		try:
-			self.open_debug('/dev/ttyACM0')  # Change this according to your device.
+			self.open_debug(path)  # Change this according to your device.
 			self.serial_is_open = True
 		except serial.serialutil.SerialException as err:
 			print("Could not open serial port:", err)

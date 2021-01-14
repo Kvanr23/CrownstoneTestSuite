@@ -1,3 +1,4 @@
+import subprocess as sp
 import time
 
 from crownstone_ble import CrownstoneBle
@@ -80,7 +81,7 @@ def connect():
 		ble.connect(address)
 		return 0
 	except BTLEDisconnectError as err:
-		red('Connecting failed', err)
+		red('Connecting failed:', err)
 		return 1
 
 
@@ -101,9 +102,19 @@ def switch_test():
 
 	# Connect to device
 	blue('Start connecting')
-	while connect() == 1:
-		time.sleep(0.1)
-	time.sleep(1)
+	if connect() == 1:
+		# We need to disconnect, otherwise, the program will keep trying with the incorrect data.
+		disconnect()
+		blue('===============================================================\n')
+		# Wait until the disconnect is done.
+		while address in sp.getoutput('hcitool con').lower().split():
+			green('Connected, according to hcitool!')
+		return 1
+	else:
+		# We are connected
+		# green('Connection complete!')
+		pass
+
 	event = logger.get_event()
 	if 'BLE_GAP_EVT_CONNECTED' in event:
 		print('Crownstone BLE event: ', end='')
@@ -111,21 +122,25 @@ def switch_test():
 		green('->   We are connected!')
 		blue('Done connecting\n')
 
+	if address in sp.getoutput('hcitool con').lower().split():
+		green('Connected, according to hcitool!')
+
 	# Switch Crownstone
 	blue('Sending switch command')
 	switch()
+	# Wait a second to make sure the command has arrived (We can also see this with the BLE_GATTS_EVT_WRITE from UART)
 	time.sleep(1)
 	event = logger.get_event()
 	if 'BLE_GATTS_EVT_WRITE' in event:
 		print('Crownstone BLE event: ', end='')
 		red(event)
-		green('->   Switching is received!\n')
+		green('->   Switch command is received!\n')
 
 	# Disconnect from device
 	blue('Start disconnecting')
 	disconnect()
-	time.sleep(1)
 
+	# This will keep checking if the UART says the crownstone has disconnected.
 	while not logger.ble_event.endswith('DISCONNECTED'):
 		time.sleep(0.1)
 
@@ -136,10 +151,16 @@ def switch_test():
 		red(event)
 		green('->   Disconnection successful')
 		blue('Done disconnecting\n')
-		yellow('Time: [', round(time.time() - starttime, 6), ']')
-		blue('===============================================================\n')
 
-	time.sleep(2)
+	while address in sp.getoutput('hcitool con').lower().split():
+		# Still connected, so keep checking until disconnected.
+		pass
+	green('Disconnected, according to hcitool!')
+
+	yellow('Time: [', round(time.time() - starttime, 6), ']')
+	blue('===============================================================\n')
+
+	return 0
 
 
 if __name__ == '__main__':
@@ -147,7 +168,7 @@ if __name__ == '__main__':
 	yellow('Time: [', round(time.time() - starttime, 6), ']')
 
 	filename = 'UART_Switching.txt'
-	testnumber = 10
+	testnumber = 1
 
 
 	# Start UART connection.
@@ -170,28 +191,21 @@ if __name__ == '__main__':
 	# Check mode (setup/normal)
 	cyan('Normal mode:', checkSetup())
 	magenta('===============================================================')
-	print('\n')
-
-	cyan('Start switching')
+	print()
 
 	for i in range(1, testnumber + 1):
-		cyan('Switch nr. ', i)
+		cyan('\nSwitch nr. ', i)
 		try:
-			switch_test()
+			failures += switch_test()
 		except:
 			err = sys.exc_info()[0]
 			if err == KeyboardInterrupt:
-				raise
-			if err == CrownstoneBleException:
-				# Connection failed most likely, try again:
-				i -= 1
+				quit()
 			else:
 				red('Error occurred:', err)
 
-			# We caught exception, add to failure count.
-			failures += 1
-
 	cyan('Done\n\n')
+	red('Failures:', failures, 'out of', testnumber)
 
 	logger.exit_flag = True
 	logger.join()
