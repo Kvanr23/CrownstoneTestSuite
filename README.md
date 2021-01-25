@@ -4,7 +4,8 @@ Testsuite for Crownstones
 Contains the following:
 
 - <u>Connection test</u>
-  
+    `ConnectAndCommand.py`
+    
     This can be used to check the connection between your pc and a Crownstone devkit (nrf52 devkit).
     
     Can be used in combination with `btmon` and `strace`, read below.
@@ -37,7 +38,7 @@ In order to work, you need to install bluepy by IanHarvey:
 
 ## Usage:
 
-`python3 ConnectionTest.py`
+`python3 ConnectAndCommand.py`
 
 If you are getting the following response (or a similar 'permission denied' error):
 
@@ -45,16 +46,16 @@ If you are getting the following response (or a similar 'permission denied' erro
 
 Please use `sudo`, on some Linux based Distro's, sudo is required for Bluetooth Low Energy.
 
-`sudo python3 ConnectionTest.py`
+`sudo python3 ConnectAndCommand.py`
 
 ### Commandline options
 
 The script comes with some commandline options to change some settings, these can be viewed with the following:
-`python3 ConnectionTest.py -h` or `--help`
+`python3 ConnectAndCommand.py -h` or `--help`
 
 ###### Which will show:
 
-```usage: ConnectionTest.py [-h] [-n NUMBER] [-u] [-d] [-o OUTPUTFILE]
+```usage: ConnectAndCommand.py [-h] [-n NUMBER] [-u] [-d] [-o OUTPUTFILE]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -69,13 +70,13 @@ optional arguments:
 ---
 
 #### strace
-The `ConnectionTest` can be used in combination with `strace`.
+The `ConnectAndCommand` can be used in combination with `strace`.
 
 `strace` is a function to trace system calls within
 It's best to do this with sudo, as some things will not show up.
 You can let strace print everything out in the terminal you are running it in, or you can let it save it to a file with the `-o` parameter
 
-`sudo strace -o [FILE_NAME] python3 ConnectionTest.py`
+`sudo strace -o [FILE_NAME] python3 ConnectAndCommand.py`
 This will save everything in the `[FILE_NAME]` file.
 
 ---
