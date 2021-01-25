@@ -23,6 +23,14 @@ class DebugLogger(Thread):
 
 		# Find ttyACM path: (Try with the first one)
 		path = sp.getoutput('ls /dev/ttyACM*')
+		if not path.startswith('/dev'):
+			print("No UART device connected")
+			self.connected_devices = False
+			return
+		else:
+			print("UART:", path)
+			self.connected_devices = True
+
 
 		try:
 			self.open_debug(path)  # Change this according to your device.
@@ -30,6 +38,7 @@ class DebugLogger(Thread):
 		except serial.serialutil.SerialException as err:
 			print("Could not open serial port:", err)
 			self.serial_is_open = False
+
 		self.file_name = filename
 
 	def open_debug(self, port):

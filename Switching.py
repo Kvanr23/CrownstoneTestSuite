@@ -27,6 +27,8 @@ ble.setSettings(
 	'MyGoodMeshNetKey'
 )
 
+uart_connected = False
+
 
 def switch():
 	global switchstate
@@ -98,7 +100,7 @@ def scan():
 
 
 def switch_test():
-	global logger
+	global logger, uart_connected
 
 	# Connect to device
 	blue('Start connecting')
@@ -114,13 +116,13 @@ def switch_test():
 		# We are connected
 		# green('Connection complete!')
 		pass
-
-	event = logger.get_event()
-	if 'BLE_GAP_EVT_CONNECTED' in event:
-		print('Crownstone BLE event: ', end='')
-		red(event)
-		green('->   We are connected!')
-		blue('Done connecting\n')
+	if uart_connected:
+		event = logger.get_event()
+		if 'BLE_GAP_EVT_CONNECTED' in event:
+			print('Crownstone BLE event: ', end='')
+			red(event)
+			green('->   We are connected!')
+			blue('Done connecting\n')
 
 	if address in sp.getoutput('hcitool con').lower().split():
 		green('Connected, according to hcitool!')
@@ -130,27 +132,31 @@ def switch_test():
 	switch()
 	# Wait a second to make sure the command has arrived (We can also see this with the BLE_GATTS_EVT_WRITE from UART)
 	time.sleep(1)
-	event = logger.get_event()
-	if 'BLE_GATTS_EVT_WRITE' in event:
-		print('Crownstone BLE event: ', end='')
-		red(event)
-		green('->   Switch command is received!\n')
+	if uart_connected:
+		event = logger.get_event()
+		if 'BLE_GATTS_EVT_WRITE' in event:
+			print('Crownstone BLE event: ', end='')
+			red(event)
+			green('->   Switch command is received!\n')
 
 	# Disconnect from device
 	blue('Start disconnecting')
 	disconnect()
+	if uart_connected:
+		wait = time.time()
+		# This will keep checking if the UART says the crownstone has disconnected.
+		while not logger.ble_event.endswith('DISCONNECTED'):
+			if time.time() == wait + 20:
+				red('No disconnected event on Crownstone within 10 seconds')
 
-	# This will keep checking if the UART says the crownstone has disconnected.
-	while not logger.ble_event.endswith('DISCONNECTED'):
-		time.sleep(0.1)
-
-	# Wait for disconnected acknowledgement.
-	event = logger.get_event()
-	if 'BLE_GAP_EVT_DISCONNECTED' in event:
-		print('Crownstone BLE event: ', end='')
-		red(event)
-		green('->   Disconnection successful')
-		blue('Done disconnecting\n')
+	if uart_connected:
+		# Wait for disconnected acknowledgement.
+		event = logger.get_event()
+		if 'BLE_GAP_EVT_DISCONNECTED' in event:
+			print('Crownstone BLE event: ', end='')
+			red(event)
+			green('->   Disconnection successful')
+			blue('Done disconnecting\n')
 
 	while address in sp.getoutput('hcitool con').lower().split():
 		# Still connected, so keep checking until disconnected.
@@ -172,15 +178,17 @@ if __name__ == '__main__':
 
 
 	# Start UART connection.
-	green('Debugger started...')
+	green("Starting debugger...")
 	logger = DebugLogger('Logger Thread', 1, filename)
-	logger.start()
-
+	uart_connected = logger.connected_devices
+	if uart_connected:
+		logger.start()
 	green('Started scanning...')
 	# Scan for devices
 	scan()
 	if not address > '':
-		raise Exception('No address found!')
+		red('No address found!')
+		quit()
 
 	green('Scanning done.')
 	# Print address
@@ -199,6 +207,7 @@ if __name__ == '__main__':
 			failures += switch_test()
 		except:
 			err = sys.exc_info()[0]
+			print('ERROR', err)
 			if err == KeyboardInterrupt:
 				quit()
 			else:
@@ -207,9 +216,10 @@ if __name__ == '__main__':
 	cyan('Done\n\n')
 	red('Failures:', failures, 'out of', testnumber)
 
-	logger.exit_flag = True
-	logger.join()
+	if uart_connected:
+		logger.exit_flag = True
+		logger.join()
 
-	cyan('\n\nUART Debugging saved to:', filename)
+		cyan('\n\nUART Debugging saved to:', filename)
 
 ble.shutDown()
