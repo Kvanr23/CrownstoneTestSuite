@@ -177,8 +177,9 @@ def switch_test():
 if __name__ == '__main__':
 	# Defaults
 	testnumber = 100
-	folder = './'
+	folder = '.'
 	file = 'Switching_output.log'
+	debug = True
 	"""
 	-n = Number of tests
 	-f = Output folder
@@ -189,11 +190,12 @@ if __name__ == '__main__':
 	args.pop(0)
 	pairs = []
 	if len(args) > 1:
-		yellow(args)
 		for i in range(len(args)):
 			if i % 2 == 0:
 				pairs.append([args[i], args[i+1]])
 		for i in pairs:
+			if i[0] == '-a':
+				address = i[1]
 			if i[0] == '-n':
 				if i[1].isdigit:
 					testnumber = int(i[1])
@@ -203,11 +205,14 @@ if __name__ == '__main__':
 			if i[0] == '-w':
 				cyan('Output file:', i[1])
 				file = i[1]
+			if i[0] == '-o':
+				debug = False if i[1] == '1' else True
 
 
 	magenta('===============================================================')
 	blue("Amount of tests:", testnumber)
 	magenta('===============================================================')
+	if not debug: sys.stdout = open(os.devnull, 'w')
 	yellow('Time: [', round(time.time() - starttime, 6), ']')
 
 	filename = folder + '/Switching_UART.txt'
@@ -218,16 +223,18 @@ if __name__ == '__main__':
 	uart_connected = logger.connected_devices
 	if uart_connected:
 		logger.start()
-	green('Started scanning...')
-	# Scan for devices
-	scan()
-	if not address > '':
-		red('No address found!')
-		quit()
 
-	green('Scanning done.')
+	if not address:
+		green('Started scanning...')
+		# Scan for devices
+		scan()
+		if not address > '':
+			red('No address found!')
+			quit()
+		green('Scanning done.')
+
 	# Print address
-	yellow('Found address:', address)
+	yellow('Address:', address)
 	# All devices
 	# cyan("Found devices:", devices)
 
@@ -247,8 +254,8 @@ if __name__ == '__main__':
 				quit()
 			else:
 				red('Error occurred:', err)
-
-	cyan('Done\n\n')
+	sys.stdout = sys.__stdout__
+	cyan('\n\nDone\n')
 	red('Failures:', failures, 'out of', testnumber)
 
 	if uart_connected:
