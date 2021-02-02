@@ -9,7 +9,7 @@ except ImportError:
 	pass
 
 import time
-from Utils.PrintColors import *
+from Colors.PrintColors import *
 
 attempts = 100
 scantime = 10

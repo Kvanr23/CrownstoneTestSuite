@@ -1,12 +1,13 @@
 import subprocess as sp
-import time
+import re
 
 from crownstone_ble import CrownstoneBle
 from crownstone_ble.Exceptions import BleError
 from crownstone_core.Exceptions import CrownstoneBleException
 
-from UART import DebugLogger
-from Utils.PrintColors import *
+from Utils.UART import events
+from Utils.UART import DebugLogger
+from Utils.Colors.PrintColors import *
 from bluepy.btle import *
 
 attempts = 1000
@@ -99,6 +100,13 @@ def scan():
 			break
 
 
+def checkNordicEvent(line):
+	parts = line.split(' ')
+	parts = parts[2:]
+	event = re.sub('[^A-Za-z0-9]+', '', parts[1])
+	return events[event]
+
+
 def switch_test():
 	global logger, uart_connected
 
@@ -117,7 +125,7 @@ def switch_test():
 		# green('Connection complete!')
 		pass
 	if uart_connected:
-		event = logger.get_event()
+		event = checkNordicEvent(logger.get_event())
 		if 'BLE_GAP_EVT_CONNECTED' in event:
 			print('Crownstone BLE event: ', end='')
 			red(event)
@@ -133,7 +141,7 @@ def switch_test():
 	# Wait a second to make sure the command has arrived (We can also see this with the BLE_GATTS_EVT_WRITE from UART)
 	time.sleep(1)
 	if uart_connected:
-		event = logger.get_event()
+		event = checkNordicEvent(logger.get_event())
 		if 'BLE_GATTS_EVT_WRITE' in event:
 			print('Crownstone BLE event: ', end='')
 			red(event)
@@ -143,16 +151,13 @@ def switch_test():
 	blue('Start disconnecting')
 	disconnect()
 	if uart_connected:
-		wait = time.time()
-		# This will keep checking if the UART says the crownstone has disconnected.
-		while not logger.ble_event.endswith('DISCONNECTED'):
-			if time.time() == wait + 20:
-				red('No disconnected event on Crownstone within 10 seconds')
-
-	if uart_connected:
 		# Wait for disconnected acknowledgement.
-		event = logger.get_event()
-		if 'BLE_GAP_EVT_DISCONNECTED' in event:
+		while not logger.ble_event:
+			pass
+
+		event = checkNordicEvent(logger.get_event())
+		# yellow(event)
+		if event == 'BLE_GAP_EVT_DISCONNECTED':
 			print('Crownstone BLE event: ', end='')
 			red(event)
 			green('->   Disconnection successful')
@@ -170,12 +175,42 @@ def switch_test():
 
 
 if __name__ == '__main__':
+	# Defaults
+	testnumber = 100
+	folder = './'
+	file = 'Switching_output.log'
+	"""
+	-n = Number of tests
+	-f = Output folder
+	-w = Output file
+	-o = Output to terminal or not
+	"""
+	args = sys.argv
+	args.pop(0)
+	pairs = []
+	if len(args) > 1:
+		yellow(args)
+		for i in range(len(args)):
+			if i % 2 == 0:
+				pairs.append([args[i], args[i+1]])
+		for i in pairs:
+			if i[0] == '-n':
+				if i[1].isdigit:
+					testnumber = int(i[1])
+			if i[0] == '-f':
+				cyan('Output folder:',  i[1])
+				folder = i[1]
+			if i[0] == '-w':
+				cyan('Output file:', i[1])
+				file = i[1]
+
+
+	magenta('===============================================================')
+	blue("Amount of tests:", testnumber)
 	magenta('===============================================================')
 	yellow('Time: [', round(time.time() - starttime, 6), ']')
 
-	filename = 'UART_Switching.txt'
-	testnumber = 1
-
+	filename = folder + '/Switching_UART.txt'
 
 	# Start UART connection.
 	green("Starting debugger...")

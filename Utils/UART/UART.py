@@ -31,7 +31,6 @@ class DebugLogger(Thread):
 			print("UART:", path)
 			self.connected_devices = True
 
-
 		try:
 			self.open_debug(path)  # Change this according to your device.
 			self.serial_is_open = True
@@ -54,14 +53,12 @@ class DebugLogger(Thread):
 		self.debug.open()
 
 	def parse_line(self, line):
-		parsed = line.split('')
-		# print(parsed)
-		source_file = parsed[0]
-		msg = parsed[1][6:]
-		parsed.pop(2)  # Unnecessary part of the string.
+		parsed = line.split('] ')
+		msg = parsed[1]
+		parsed.pop(0)
 
 		if msg.startswith('BLE'):
-			# print("MSG:", msg)
+			# print("BLE Event:", msg, flush=True)
 			self.ble_event = msg
 
 	def get_line(self):
