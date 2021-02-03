@@ -115,13 +115,14 @@ def switch_test():
 
 	# Connect to device
 	blue('Start connecting')
-	if connect() == 1:
+	if ble.connect(address) == False:
 		# We need to disconnect, otherwise, the program will keep trying with the incorrect data.
 		disconnect()
 		blue('===============================================================\n')
 		# Wait until the disconnect is done.
 		while address in sp.getoutput('hcitool con').lower().split():
-			green('Connected, according to hcitool!')
+			# green('Connected, according to hcitool!')
+			pass
 		return 1
 	else:
 		# We are connected
