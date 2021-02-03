@@ -14,7 +14,7 @@ attempts = 1000
 address = ''
 failures = 0
 devices = []
-switchstate = False
+switchstate = 0
 starttime = time.time()
 
 ble = CrownstoneBle()
@@ -34,8 +34,11 @@ uart_connected = False
 def switch():
 	global switchstate
 	try:
-		ble.control.setSwitchState(switchstate)
-		switchstate = not switchstate
+		ble.control.setSwitch(1)
+		if switchstate == 1:
+			switchstate = 0
+		else:
+			switchstate = 1
 		return 0
 	except BTLEDisconnectError as err:
 		return 1
@@ -80,12 +83,11 @@ def disconnect():
 
 
 def connect():
-	try:
-		ble.connect(address)
-		return 0
-	except BTLEDisconnectError as err:
-		red('Connecting failed:', err)
+	if ble.connect(address) == False:
+		red('Connecting failed:')
 		return 1
+	else:
+		return 0
 
 
 def scan():
@@ -101,6 +103,7 @@ def scan():
 
 
 def checkNordicEvent(line):
+	yellow(line)
 	parts = line.split(' ')
 	parts = parts[2:]
 	event = re.sub('[^A-Za-z0-9]+', '', parts[1])
@@ -245,15 +248,15 @@ if __name__ == '__main__':
 
 	for i in range(1, testnumber + 1):
 		cyan('\nSwitch nr. ', i)
-		try:
-			failures += switch_test()
-		except:
-			err = sys.exc_info()[0]
-			print('ERROR', err)
-			if err == KeyboardInterrupt:
-				quit()
-			else:
-				red('Error occurred:', err)
+		# try:
+		failures += switch_test()
+		# except:
+		# 	err = sys.exc_info()[0]
+		# 	print('ERROR', err)
+		# 	if err == KeyboardInterrupt:
+		# 		quit()
+		# 	else:
+		# 		red('Error occurred:', err)
 	sys.stdout = sys.__stdout__
 	cyan('\n\nDone\n')
 	red('Failures:', failures, 'out of', testnumber)
