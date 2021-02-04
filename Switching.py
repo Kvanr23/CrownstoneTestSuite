@@ -1,5 +1,6 @@
 import subprocess as sp
 import re
+from time import time
 
 from crownstone_ble import CrownstoneBle
 from crownstone_ble.Exceptions import BleError
@@ -29,25 +30,38 @@ ble.setSettings(
 )
 
 uart_connected = False
+output_file = ""
+out_file = False
+
+
+def output_to_file(line):
+	if output_file:
+		with open(output_file, 'a') as f:
+			f.write(line + '\n')
 
 
 def switch():
 	global switchstate
 	try:
+		output_to_file("Switching...")
 		ble.control.setSwitch(1)
 		if switchstate == 1:
 			switchstate = 0
 		else:
 			switchstate = 1
+		output_to_file("Switching done")
 		return 0
 	except BTLEDisconnectError as err:
+		output_to_file("BTLEDisconnectError while switching")
 		return 1
 
 
 def checkSetup():
 	if not ble.isCrownstoneInNormalMode(address):
 		yellow('Device is in setup mode')
+		output_to_file("Device is in setup mode")
 		try:
+			output_to_file("Trying to setup crownstone")
 			ble.setupCrownstone(
 				address,
 				crownstoneId=1,
@@ -57,10 +71,13 @@ def checkSetup():
 				ibeaconMajor=123,
 				ibeaconMinor=456
 			)
+			output_to_file("Setup complete")
 		except CrownstoneBleException as err:
 			if err.type == BleError.SETUP_FAILED:
+				output_to_file("'SETUP_FAILED', likely still succeeded:")
 				if ble.isCrownstoneInNormalMode(address):
 					green('Setup completed!')
+					output_to_file(">> Setup succeeded after all")
 					return True
 				else:
 					return False
@@ -70,6 +87,7 @@ def checkSetup():
 		# ble.connect(address)
 		# ble.control.commandFactoryReset()
 		# red('Reset done')
+		output_to_file("Device is in normal mode")
 		return True
 
 
@@ -79,18 +97,19 @@ def disconnect():
 		return 0
 	except Exception as err:
 		red(err)
+		output_to_file("Disconnect failed: " + err)
 		return 1
 
 
 def scan():
 	global address, devices
-
+	output_to_file("Scanning for devices")
 	devices = ble.getCrownstonesByScanning(2)
 	for device in devices:
 		if device['address'].startswith('ec:'):
-			# if not device['setupMode']:
 			address = device['address']
 			green('Found dev kit!')
+			output_to_file("Found device")
 			break
 
 
@@ -107,6 +126,7 @@ def switch_test():
 
 	# Connect to device
 	blue('Start connecting')
+	output_to_file("Start connection")
 	if not ble.connect(address):
 		# We need to disconnect, otherwise, the program will keep trying with the incorrect data.
 		disconnect()
@@ -119,6 +139,7 @@ def switch_test():
 	else:
 		# We are connected
 		# green('Connection complete!')
+		output_to_file("Connection Complete")
 		pass
 	if uart_connected:
 		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
@@ -135,12 +156,15 @@ def switch_test():
 			red(event)
 			green('->   We are connected!')
 			blue('Done connecting\n')
+			output_to_file("CONNECTED done on dev-kit")
 
 	if address in sp.getoutput('hcitool con').lower().split():
 		green('Connected, according to hcitool!')
+		output_to_file("hcitool con: Connected")
 
 	# Switch Crownstone
 	blue('Sending switch command')
+	output_to_file("Starting Switching")
 	switch()
 	if uart_connected:
 		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
@@ -156,9 +180,11 @@ def switch_test():
 			print('Crownstone BLE event: ', end='')
 			red(event)
 			green('->   Switch command is received!\n')
+			output_to_file("SWITCHING done on dev-kit")
 
 	# Disconnect from device
 	blue('Start disconnecting')
+	output_to_file("Starting Disconnecting")
 	disconnect()
 	if uart_connected:
 		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
@@ -176,17 +202,22 @@ def switch_test():
 			red(event)
 			green('->   Disconnection successful')
 			blue('Done disconnecting\n')
+			output_to_file("DISCONNECT done on dev-kit")
 
 	t = time.time()
 	while address in sp.getoutput('hcitool con').lower().split():
 		if time.time() >= t + 10:
-			# Did not receive switch command.
+			# Connection was still live on our side
+			output_to_file("ERROR: Connection still live on our side!")
 			return 1
 		# Still connected, so keep checking until disconnected.
 		pass
 	green('Disconnected, according to hcitool!')
+	output_to_file("hcitool con: disconnected")
 
-	yellow('Time: [', round(time.time() - starttime, 6), ']')
+	time_round = 'Time: [' + str(round(time.time() - starttime, 6)) +  ']'
+	yellow(time_round)
+	output_to_file(time_round)
 	blue('===============================================================\n')
 
 	return 0
@@ -196,7 +227,7 @@ if __name__ == '__main__':
 	# Defaults
 	testnumber = 100
 	folder = '.'
-	file = 'Switching_output.log'
+	output_file = 'Switching_output.log'
 	debug = True
 	"""
 	-n = Number of tests
@@ -220,11 +251,19 @@ if __name__ == '__main__':
 			if i[0] == '-f':
 				cyan('Output folder:',  i[1])
 				folder = i[1]
+				sp.getoutput('mkdir ' + folder)
+				out_folder = True
 			if i[0] == '-w':
 				cyan('Output file:', i[1])
-				file = i[1]
+				output_file = '/' + i[1]
+				out_file = True
 			if i[0] == '-o':
 				debug = False if i[1] == '1' else True
+		if out_folder:
+			output_file = './' + folder + '/' + output_file
+		if out_file:
+			with open(output_file, 'w'):
+				pass
 
 
 	magenta('===============================================================')
@@ -233,14 +272,16 @@ if __name__ == '__main__':
 	if not debug: sys.stdout = open(os.devnull, 'w')
 	yellow('Time: [', round(time.time() - starttime, 6), ']')
 
-	filename = folder + '/Switching_UART.txt'
+	uart_file = folder + '/Switching_UART.txt'
 
 	# Start UART connection.
 	green("Starting debugger...")
-	logger = DebugLogger('Logger Thread', 1, filename)
+	output_to_file("Starting debugger")
+	logger = DebugLogger('Logger Thread', 1, uart_file)
 	uart_connected = logger.connected_devices
 	if uart_connected:
 		logger.start()
+		output_to_file("Started debugger")
 
 	if not address:
 		green('Started scanning...')
@@ -250,9 +291,11 @@ if __name__ == '__main__':
 			red('No address found!')
 			quit()
 		green('Scanning done.')
+		output_to_file("Done scanning")
 
 	# Print address
 	yellow('Address:', address)
+	output_to_file("Address: " + address)
 	# All devices
 	# cyan("Found devices:", devices)
 
@@ -263,23 +306,28 @@ if __name__ == '__main__':
 
 	for i in range(1, testnumber + 1):
 		cyan('\nSwitch nr. ', i)
-		# try:
-		failures += switch_test()
-		# except:
-		# 	err = sys.exc_info()[0]
-		# 	print('ERROR', err)
-		# 	if err == KeyboardInterrupt:
-		# 		quit()
-		# 	else:
-		# 		red('Error occurred:', err)
+		output_to_file("Switch nr. " + str(i))
+		try:
+			failures += switch_test()
+		except:
+			err = sys.exc_info()[0]
+			# print('ERROR', err)
+			if err == KeyboardInterrupt:
+				quit()
+			else:
+				red('Error occurred:', err)
+				output_to_file("Error occurred: " + err)
 	sys.stdout = sys.__stdout__
 	cyan('\n\nDone\n')
+	output_to_file("Done")
 	red('Failures:', failures, 'out of', testnumber)
+	output_to_file("Failures: " + str(failures) + " out of " + str(testnumber))
 
 	if uart_connected:
 		logger.exit_flag = True
 		logger.join()
 
-		cyan('\n\nUART Debugging saved to:', filename)
+		cyan('\n\nUART Debugging saved to:', uart_file)
+		output_to_file("UART file saved as " + uart_file)
 
 ble.shutDown()
