@@ -3,11 +3,13 @@
 This is the procedure to take, in order to test the connections.
 
 ## Requirements
+* Linux (It is built on Ubuntu)
 * BlueZ (Tested and built with version 5.53, so results may vary with other versions)
 * Python 3
 * Installed BluePy
 * Installed crownstone-lib-python-ble ([Installation](https://github.com/crownstone/crownstone-lib-python-ble#installing-crownstone-ble))
 * Downloaded/Cloned this repository
+* Bluenet v5.4.0 installed on a Crownstone/nRF52 devkit (connected via USB).
 
 ### Optional: nRF52 Development Board
 If you have a development board with Bluenet installed on it, the UART bus over USB can be used. 
@@ -40,3 +42,14 @@ It will also generate a log file with everything from it.
 
 ## What next
 Check the logs for which test number failed and check it in the UART log and the btmon in Wireshark.
+
+# Optional arguments
+* `-a <MAC ADDRESS>`: To skip scanning (if not added, there will be scanned for a (Crownstone) device with an address starting with `EC:`.
+* `-n <NUMBER OF CONNECTIONS>`: To set a number of connections, the more connections, the accurater it will be. (Defaults to 100).
+* `-f <FOLDER NAME>`: Puts generated files in this folder, it will create this folder if it does not exist.
+* `-w <FILE NAME>`: File name to debug to, if not added, it will not create this file, will go in the same directory as `Switching.py` unless a folder is defined.
+
+
+
+# TODO:
+Start `btmon` from withing the script, so one terminal is needed.
