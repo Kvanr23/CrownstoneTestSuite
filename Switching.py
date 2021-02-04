@@ -82,20 +82,12 @@ def disconnect():
 		return 1
 
 
-def connect():
-	if ble.connect(address) == False:
-		red('Connecting failed:')
-		return 1
-	else:
-		return 0
-
-
 def scan():
 	global address, devices
 
 	devices = ble.getCrownstonesByScanning(2)
 	for device in devices:
-		if device['address'].startswith('ec:ac:'):
+		if device['address'].startswith('ec:'):
 			# if not device['setupMode']:
 			address = device['address']
 			green('Found dev kit!')
@@ -103,7 +95,7 @@ def scan():
 
 
 def checkNordicEvent(line):
-	yellow(line)
+	# yellow(line) # Print out the line to check the event.
 	parts = line.split(' ')
 	parts = parts[2:]
 	event = re.sub('[^A-Za-z0-9]+', '', parts[1])
@@ -115,7 +107,7 @@ def switch_test():
 
 	# Connect to device
 	blue('Start connecting')
-	if ble.connect(address) == False:
+	if not ble.connect(address):
 		# We need to disconnect, otherwise, the program will keep trying with the incorrect data.
 		disconnect()
 		blue('===============================================================\n')
@@ -129,6 +121,14 @@ def switch_test():
 		# green('Connection complete!')
 		pass
 	if uart_connected:
+		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
+		t = time.time()
+		while not logger.ble_event:
+			if time.time() >= t + 10:
+				# Did not receive switch command.
+				return 1
+			pass
+
 		event = checkNordicEvent(logger.get_event())
 		if 'BLE_GAP_EVT_CONNECTED' in event:
 			print('Crownstone BLE event: ', end='')
@@ -142,9 +142,15 @@ def switch_test():
 	# Switch Crownstone
 	blue('Sending switch command')
 	switch()
-	# Wait a second to make sure the command has arrived (We can also see this with the BLE_GATTS_EVT_WRITE from UART)
-	time.sleep(1)
 	if uart_connected:
+		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
+		t = time.time()
+		while not logger.ble_event:
+			if time.time() >= t + 10:
+				# Did not receive switch command.
+				return 1
+			pass
+
 		event = checkNordicEvent(logger.get_event())
 		if 'BLE_GATTS_EVT_WRITE' in event:
 			print('Crownstone BLE event: ', end='')
@@ -155,8 +161,12 @@ def switch_test():
 	blue('Start disconnecting')
 	disconnect()
 	if uart_connected:
-		# Wait for disconnected acknowledgement.
+		# Wait for the logger to get a event (max 10 seconds to avoid lockup)
+		t = time.time()
 		while not logger.ble_event:
+			if time.time() >= t + 10:
+				# Did not receive switch command.
+				return 1
 			pass
 
 		event = checkNordicEvent(logger.get_event())
@@ -167,7 +177,11 @@ def switch_test():
 			green('->   Disconnection successful')
 			blue('Done disconnecting\n')
 
+	t = time.time()
 	while address in sp.getoutput('hcitool con').lower().split():
+		if time.time() >= t + 10:
+			# Did not receive switch command.
+			return 1
 		# Still connected, so keep checking until disconnected.
 		pass
 	green('Disconnected, according to hcitool!')
