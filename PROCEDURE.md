@@ -16,12 +16,27 @@ If you have a development board with Bluenet installed on it, the UART bus over 
 If it is connected, the test will use the output of the dev-board as confirmations. 
 It will also generate a log file with everything from it.
 
+## Sudo rights for Bluepy-helper
+
+First find where bluepy-helper is located:
+`python -m site`
+This will return a list of paths, we need the dist-packages path.
+This can be for example:
+`/usr/local/lib/python3.8/dist-packages/`
+The bluepy-helper will then be in:
+`/usr/local/lib/python3.8/dist-packages/bluepy-1.3.0-py3.8.egg/bluepy/`
+
+In order to set the sudo rights for it the following command is needed: 
+`sudo setcap 'cap_net_raw,cap_net_admin+eip' /usr/local/lib/python3.8/dist-packages/bluepy-1.3.0-py3.8.egg/bluepy/bluepy-helper`
+(Change the path if needed for different versions)
+This will eliminate the need for sudo.
+
 ## Procedure
 
 1. Open two terminals
 2. On the first one, execute the following command: `btmon -w ./btmon.log`
 3. In the second terminal, the test has to be run:
-  `sudo strace -o ./strace.log python3 Switching.py`
+  `strace -o ./strace.log python3 Switching.py`
 4. Wait until the test is done, when it is done, interrupt the `btmon` process with `ctrl+c` (`btmon` does not stop automatically)
 
 ---
