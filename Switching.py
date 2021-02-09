@@ -104,13 +104,11 @@ def disconnect():
 def scan():
 	global address, devices
 	output_to_file("Scanning for devices")
-	devices = ble.getCrownstonesByScanning(2)
-	for device in devices:
-		if device['address'].startswith('ec:'):
-			address = device['address']
-			green('Found dev kit!')
-			output_to_file("Found device")
-			break
+	# devices = ble.getCrownstonesByScanning(2)
+	device = ble.getNearestCrownstone()
+	address = device['address']
+	green('Found device!')
+	output_to_file("Found device")
 
 
 def checkNordicEvent(line):
@@ -127,7 +125,13 @@ def switch_test():
 	# Connect to device
 	blue('Start connecting')
 	output_to_file("Start connection")
-	if not ble.connect(address):
+	try:
+		ble.connect(address)
+	except CrownstoneBleException as err:
+		if err.type == BleError.COULD_NOT_VALIDATE_SESSION_NONCE:
+			red("The closest Crownstone found is setup with different keys. Exiting...")
+			import os
+			os._exit(2)
 		# We need to disconnect, otherwise, the program will keep trying with the incorrect data.
 		disconnect()
 		blue('===============================================================\n')
@@ -228,12 +232,16 @@ if __name__ == '__main__':
 	testnumber = 100
 	folder = '.'
 	output_file = 'Switching_output.log'
+	out_folder = False
+	enable_scan = False
 	debug = True
 	"""
+	-a = Address
 	-n = Number of tests
 	-f = Output folder
 	-w = Output file
 	-o = Output to terminal or not
+	-scan = Enable scanning
 	"""
 	args = sys.argv
 	args.pop(0)
@@ -245,6 +253,7 @@ if __name__ == '__main__':
 		for i in pairs:
 			if i[0] == '-a':
 				address = i[1]
+				enable_scan = False
 			if i[0] == '-n':
 				if i[1].isdigit:
 					testnumber = int(i[1])
@@ -259,15 +268,23 @@ if __name__ == '__main__':
 				out_file = True
 			if i[0] == '-o':
 				debug = False if i[1] == '1' else True
+			if i[0] == '-scan':
+				enable_scan = False if i[1] == '0' else True
 		if out_folder:
 			output_file = './' + folder + '/' + output_file
 		if out_file:
 			with open(output_file, 'w'):
 				pass
 
+	if not enable_scan and len(address) < 17:
+		red("Scanning is not enabled and/or address is not in the following format:\tXX:XX:XX:XX:XX:XX")
+		yellow("Either add the '-a' argument with an address or use the '-scan' option")
+		import os
+		os._exit(1)
 
 	magenta('===============================================================')
 	blue("Amount of tests:", testnumber)
+	blue("Scanning:", enable_scan)
 	magenta('===============================================================')
 	if not debug: sys.stdout = open(os.devnull, 'w')
 	yellow('Time: [', round(time.time() - starttime, 6), ']')
@@ -283,7 +300,7 @@ if __name__ == '__main__':
 		logger.start()
 		output_to_file("Started debugger")
 
-	if not address:
+	if enable_scan:
 		green('Started scanning...')
 		# Scan for devices
 		scan()
@@ -294,7 +311,7 @@ if __name__ == '__main__':
 		output_to_file("Done scanning")
 
 	# Print address
-	yellow('Address:', address)
+	blue('Address:', address)
 	output_to_file("Address: " + address)
 	# All devices
 	# cyan("Found devices:", devices)
