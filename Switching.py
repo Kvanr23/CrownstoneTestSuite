@@ -1,6 +1,8 @@
 import subprocess as sp
 import re
 from time import time
+import os
+import signal
 
 from crownstone_ble import CrownstoneBle
 from crownstone_ble.Exceptions import BleError
@@ -301,6 +303,25 @@ def switch_test():
 	return 0
 
 
+# Function to start btmon.
+def start_btmon(btmon_file):
+	"""
+	This function will start btmon from the script itself so a separate
+	"""
+	global btmon
+	btmon = sp.Popen(
+		'btmon -w ' + btmon_file,
+		shell=True,
+		stdout=open(os.devnull, 'w'),
+		preexec_fn=os.setsid()
+	)
+
+
+def stop_btmon():
+	global btmon
+	os.killpg(os.getpgid(btmon.pid), signal=signal.SIGKILL)
+
+
 if __name__ == '__main__':
 	# Defaults
 	testnumber = 100
@@ -308,10 +329,12 @@ if __name__ == '__main__':
 	output_file = 'Switching_output.log'
 	out_folder = False
 	enable_scan = False
+	btmon_logging = False
 	debug = True
 	# Launch arguments
 	"""
 	-a = Address
+	-b = Btmon logging
 	-n = Number of tests
 	-f = Output folder
 	-w = Output file
@@ -329,6 +352,9 @@ if __name__ == '__main__':
 			if i[0] == '-a':
 				address = i[1]
 				enable_scan = False
+			if i[0] == '-b':
+				# Enable btmon logging
+				btmon_logging = True
 			if i[0] == '-n':
 				if i[1].isdigit:
 					testnumber = int(i[1])
@@ -357,6 +383,10 @@ if __name__ == '__main__':
 		yellow("Either add the '-a' argument with an address or use the '-scan' option")
 		import os
 		os._exit(1)
+
+	if btmon_logging:
+		btmon_file = './' + folder + 'Switching_btmon.log'
+		start_btmon(btmon_file)
 
 	magenta('===============================================================')
 	blue("Amount of tests:", testnumber)
@@ -427,6 +457,9 @@ if __name__ == '__main__':
 		# Print our final message
 		cyan('\n\nUART Debugging saved to:', uart_file)
 		output_to_file("UART file saved as " + uart_file)
+
+	if btmon_logging:
+		stop_btmon()
 
 # Shutdown the ble object.
 ble.shutDown()
