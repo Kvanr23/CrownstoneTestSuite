@@ -173,9 +173,19 @@ def switch_test():
 	# Connect to device
 	blue('Start connecting')
 	output_to_file("Start connection")
+
+	# Check if we are connected already, which should not be the case.
+	# print(sp.getoutput('hcitool con').lower().split())
+
+
 	try:
 		# Start connection
 		ble.connect(address)
+		if address not in sp.getoutput('hcitool con').lower().split():
+			green('Not connected, according to hcitool!')
+			ble.disconnect()
+			return 1
+
 	except CrownstoneBleException as err:
 		if err.type == BleError.COULD_NOT_VALIDATE_SESSION_NONCE:
 			red("The closest Crownstone found is setup with different keys. Exiting...")
@@ -188,7 +198,7 @@ def switch_test():
 		blue('===============================================================\n')
 		# Wait until the disconnect is done.
 		while address in sp.getoutput('hcitool con').lower().split():
-			# green('Connected, according to hcitool!')
+			green('Connected, according to hcitool!')
 			pass
 		return 1
 	else:
