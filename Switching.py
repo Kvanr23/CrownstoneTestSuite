@@ -177,14 +177,22 @@ def switch_test():
 	# Check if we are connected already, which should not be the case.
 	# print(sp.getoutput('hcitool con').lower().split())
 
-
 	try:
 		# Start connection
-		ble.connect(address)
-		if address not in sp.getoutput('hcitool con').lower().split():
-			green('Not connected, according to hcitool!')
+		connection = ble.connect(address)
+		# red("Connection: " + str(connection))
+		if connection and address not in sp.getoutput('hcitool con').lower().split():
+			red('Not connected, according to hcitool!')
+			yellow("Disconnecting the device to avoid next connection error.")
 			ble.disconnect()
 			return 1
+		elif not connection:
+			red("Connection was unsuccesfull")
+			yellow("Disconnecting the device to avoid next connection error.")
+			ble.disconnect()
+			time.sleep(5)
+			return 1
+
 
 	except CrownstoneBleException as err:
 		if err.type == BleError.COULD_NOT_VALIDATE_SESSION_NONCE:
