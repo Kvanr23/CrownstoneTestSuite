@@ -2,14 +2,8 @@ from crownstone_ble import CrownstoneBle
 from crownstone_core.Exceptions import CrownstoneBleException
 from crownstone_ble.Exceptions import BleError
 import bluepy
-try:
-	from termcolor import colored
-except ImportError:
-	# print('Please install termcolor:\n\n\'pip install termcolor\'')
-	pass
-
 import time
-from Colors.PrintColors import *
+from Utils.Colors.PrintColors import *
 
 attempts = 100
 scantime = 10
@@ -51,20 +45,19 @@ def scanCrownstones():
 			if device['setupMode']:
 				cyan('In setupMode')
 				try:
-					try:
-						ble.setupCrownstone(
-							device['address'],
-							crownstoneId=1,
-							sphereId=1,
-							meshDeviceKey='IamTheMeshKeyJey',
-							ibeaconUUID='1843423e-e175-4af0-a2e4-31e32f729a8a',
-							ibeaconMajor=123,
-							ibeaconMinor=456
-						)
-					except bluepy.btle.BTLEDisconnectError as err:
-						red(err)
-						failures += 1
-						fails.append((attempt, bluepy.btle.BTLEDisconnectError))
+					ble.setupCrownstone(
+						device['address'],
+						crownstoneId=1,
+						sphereId=1,
+						meshDeviceKey='IamTheMeshKeyJey',
+						ibeaconUUID='1843423e-e175-4af0-a2e4-31e32f729a8a',
+						ibeaconMajor=123,
+						ibeaconMinor=456
+					)
+				except bluepy.btle.BTLEDisconnectError as err:
+					red(err)
+					failures += 1
+					fails.append((attempt, bluepy.btle.BTLEDisconnectError))
 				except CrownstoneBleException as err:
 					if err.type == BleError.SETUP_FAILED:
 						print(
@@ -89,7 +82,10 @@ def scanCrownstones():
 					ble.connect(device['address'])
 				except bluepy.btle.BTLEDisconnectError as err:
 					red(err)
-					ble.connect(device['address'])
+					ble.connect(device['address'])  # Try again once
+				except Exception as err:
+					print(err)
+					red("Failed to validate session nonce, is this the right Crownstone? " + address)
 
 				# yellow('Connected to crwn')
 				try:
