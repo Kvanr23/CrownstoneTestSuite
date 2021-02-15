@@ -2,14 +2,8 @@ from crownstone_ble import CrownstoneBle
 from crownstone_core.Exceptions import CrownstoneBleException
 from crownstone_ble.Exceptions import BleError
 import bluepy
-try:
-	from termcolor import colored
-except ImportError:
-	# print('Please install termcolor:\n\n\'pip install termcolor\'')
-	pass
-
 import time
-from Colors.PrintColors import *
+from Utils.Colors.PrintColors import *
 
 attempts = 100
 scantime = 10
@@ -64,7 +58,7 @@ def scanCrownstones():
 					except bluepy.btle.BTLEDisconnectError as err:
 						red(err)
 						failures += 1
-						fails.append((attempt, bluepy.btle.BTLEDisconnectError))
+						fails.append((attempt, err))
 				except CrownstoneBleException as err:
 					if err.type == BleError.SETUP_FAILED:
 						print(
