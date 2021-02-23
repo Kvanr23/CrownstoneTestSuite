@@ -59,7 +59,8 @@ This will eliminate the need for sudo.
 Check the logs for which test number failed and check it in the UART log and the btmon in Wireshark.
 
 # Optional arguments
-* `-a <MAC ADDRESS>`: To skip scanning (if not added, there will be scanned for a (Crownstone) device with an address starting with `EC:`.
+* `-a <MAC ADDRESS>`: When supplying this argument, this will be used instead of scanning. If it is not supplied, `-scan 1` needs to be added.
+* `-scan <1 or 0>`: This will enable scanning, if neither an address, nor the scan option is supplied, the script will exit.
 * `-n <NUMBER OF CONNECTIONS>`: To set a number of connections, the more connections, the accurater it will be. (Defaults to 100).
 * `-f <FOLDER NAME>`: Puts generated files in this folder, it will create this folder if it does not exist.
 * `-w <FILE NAME>`: File name to debug to, if not added, it will not create this file, will go in the same directory as `Switching.py` unless a folder is defined.
